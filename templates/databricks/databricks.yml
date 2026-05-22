@@ -1,0 +1,47 @@
+bundle:
+  name: medallion-pipeline
+
+include:
+  - resources/*.yml
+  - resources/**/*.yml
+
+sync:
+  # exclude:
+  #   - notebooks/**
+  #   - .bundle/**
+  #   - .git/**
+  #   - .github/**
+  #   - .vscode/**
+  #   - __pycache__/**
+#   include:
+#     - src/**
+#     - resources/**
+#     # - notebooks/**
+
+# ==== Variables ====
+variables:
+  env:
+    default: dev
+
+  cluster_node_type:
+    default: Standard_D4s_v3
+
+  # ADLS Gen2 storage account
+  storage_account:
+    default: ""
+  
+  # service principal for accessing ADLS Gen2
+  sp_client_id:
+    default: ""
+  sp_client_secret:
+    default: ""
+  tenant_id:
+    default: ""
+
+# ==== Targets ====
+targets:
+  dev:
+    workspace:
+      host: {{DATABRICKS_HOST}}
+    variables:
+      env: dev

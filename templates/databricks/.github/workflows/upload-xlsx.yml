@@ -1,0 +1,47 @@
+name: Upload file to Azure Blob (OIDC)
+
+on:
+  workflow_dispatch:
+
+env:
+  SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+  STORAGE_ACCOUNT: ${{ vars.DATALAKE_NAME }}
+  CONTAINER: raw
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.ARM_CLIENT_ID }}
+          tenant-id: ${{ secrets.ARM_TENANT_ID }}
+          subscription-id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+
+          
+      - name: Ensure container exists
+        run: |
+          az storage container create \
+            --name $CONTAINER \
+            --account-name $STORAGE_ACCOUNT \
+            --auth-mode login || true
+
+
+      - name: Upload file to Blob Storage (no keys)
+        run: |
+          az storage blob upload \
+            --account-name $STORAGE_ACCOUNT \
+            --container-name $CONTAINER \
+            --name production_time.xlsx \
+            --file data/production_time.xlsx \
+            --auth-mode login \
+            --overwrite

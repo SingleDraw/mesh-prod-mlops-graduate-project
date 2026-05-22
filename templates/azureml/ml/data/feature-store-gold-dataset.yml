@@ -1,0 +1,11 @@
+$schema: https://azuremlschemas.azureedge.net/latest/data.schema.json
+
+name: feature_store_gold_dataset
+version: __DATA_VERSION__
+
+description: "Delta Lake dataset registered as AzureML data asset, used for testing Delta Lake connectivity from AzureML pipelines. The dataset is stored in the shared ADLS Gen2 datastore used by both Databricks and AzureML, and points to a directory with an MLTable definition file that surfaces the delta lake as an MLTable/multifile dataset in AzureML."
+
+type: mltable
+
+# URI reference to delta lake source: directory with MLTable definition file:
+path: azureml://datastores/{{SHARED_DATASTORE_NAME}}/paths/{{DELTA_MLTABLE_DIR}}/

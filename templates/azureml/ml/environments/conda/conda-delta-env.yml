@@ -1,0 +1,34 @@
+name: ml-delta-env
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.10
+  - pip
+  # setuptools<70.0.0 and wheel are required 
+  # to avoid azureml package installation issues, 
+  # as newer versions of setuptools have removed pkg_resources 
+  # which is still required by some azureml packages
+  - setuptools<70.0.0
+  - wheel
+
+  - pip:
+      # --- reading delta lake tables ---
+      - setuptools==69.5.1
+      - mltable==1.6.1
+      # - azureml-dataprep[pandas,delta]
+      - pandas==2.1.4
+      - pyarrow==14.0.1
+
+      # --- Core data ---
+      - pandas==2.1.4
+      - numpy==1.26.4
+
+      # --- ML ---
+      - scikit-learn==1.4.2
+      - joblib==1.4.2
+
+      # --- Tracking ---
+      - mlflow==2.14.1
+      - azureml-mlflow==1.56.0
+      - protobuf==3.20.3

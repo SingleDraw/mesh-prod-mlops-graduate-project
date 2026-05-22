@@ -1,0 +1,101 @@
+name: register-delta-resources
+
+on:
+  workflow_dispatch:
+
+env:
+  # ====== OIDC Authentication Variables ======
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+  CLIENT_SECRET: ${{ secrets.SP_CLIENT_SECRET }}
+
+  # ====== AzureML workload variables ======
+  AML_RESOURCE_GROUP:   ${{ vars.AML_RESOURCE_GROUP }}
+  AML_WORKSPACE_NAME:   ${{ vars.AML_WORKSPACE_NAME }}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  register-delta-resources:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ========= Setup and Azure Login (OIDC) ==========
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.ARM_CLIENT_ID }}
+          tenant-id: ${{ secrets.ARM_TENANT_ID }}
+          subscription-id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+
+      - name: Mask SP secret
+        run: echo "::add-mask::$CLIENT_SECRET"
+
+      - run: az extension add --name ml -y
+
+      # ======== Register Delta Resources (env, dataset, component) ==========
+      - name: Read config.yml and inject Versions
+        run: |
+          # Read versions from config.yml
+          ENV_VERSION=$(yq e '.versions["delta_env"]' config.yml)
+          COMP_VERSION=$(yq e '.versions["component_prepare"]' config.yml)
+          TRAIN_VERSION=$(yq e '.versions["component_train"]' config.yml)
+          EVAL_VERSION=$(yq e '.versions["component_eval"]' config.yml)
+          DATA_VERSION=$(yq e '.versions["feature_store_gold_dataset"]' config.yml)
+          PIPELINE_VERSION=$(yq e '.versions["delta_pipeline"]' config.yml)
+          INSTANCE_TYPE=$(yq e '.compute.instance_type' config.yml)
+
+          echo "Registering versions: ENV=$ENV_VERSION, COMP=$COMP_VERSION, TRAIN=$TRAIN_VERSION, EVAL=$EVAL_VERSION, DATA=$DATA_VERSION"
+          # substitute placeholders in all YAML files
+          find ml/ -name "*.yml" -exec sed -i "s|__COMP_VERSION__|${COMP_VERSION}|g" {} +
+          find ml/ -name "*.yml" -exec sed -i "s|__TRAIN_VERSION__|${TRAIN_VERSION}|g" {} +
+          find ml/ -name "*.yml" -exec sed -i "s|__EVAL_VERSION__|${EVAL_VERSION}|g" {} +
+          find ml/ -name "*.yml" -exec sed -i "s|__ENV_VERSION__|${ENV_VERSION}|g" {} +
+          find ml/ -name "*.yml" -exec sed -i "s|__DATA_VERSION__|${DATA_VERSION}|g" {} +
+          find ml/ -name "*.yml" -exec sed -i "s|__PIPELINE_VERSION__|${PIPELINE_VERSION}|g" {} +
+          find ml/ -name "*.yml" -exec sed -i "s|__INSTANCE_TYPE__|${INSTANCE_TYPE}|g" {} +
+
+          # export variables for later steps if needed
+          echo "ENV_VERSION=$ENV_VERSION" >> $GITHUB_ENV
+          echo "COMP_VERSION=$COMP_VERSION" >> $GITHUB_ENV
+          echo "TRAIN_VERSION=$TRAIN_VERSION" >> $GITHUB_ENV
+          echo "EVAL_VERSION=$EVAL_VERSION" >> $GITHUB_ENV
+          echo "DATA_VERSION=$DATA_VERSION" >> $GITHUB_ENV
+          echo "PIPELINE_VERSION=$PIPELINE_VERSION" >> $GITHUB_ENV
+          echo "INSTANCE_TYPE=$INSTANCE_TYPE" >> $GITHUB_ENV
+
+      - name: Register delta environment
+        run: |
+          az ml environment create \
+            --file ml/environments/delta-env.yml \
+            --workspace-name $AML_WORKSPACE_NAME \
+            --resource-group $AML_RESOURCE_GROUP
+
+      - name: Register feature store gold dataset
+        run: |
+          az ml data create \
+              --file ml/data/feature-store-gold-dataset.yml \
+              --workspace-name $AML_WORKSPACE_NAME \
+              --resource-group $AML_RESOURCE_GROUP \
+              || echo "Datasets already exist, skipping creation."
+
+      - name: Register components
+        run: |
+          az ml component create \
+            --file ml/components/prep/component.yml \
+            --workspace-name $AML_WORKSPACE_NAME \
+            --resource-group $AML_RESOURCE_GROUP
+
+          az ml component create \
+            --file ml/components/train/component.yml \
+            --workspace-name $AML_WORKSPACE_NAME \
+            --resource-group $AML_RESOURCE_GROUP
+
+          az ml component create \
+            --file ml/components/eval/component.yml \
+            --workspace-name $AML_WORKSPACE_NAME \
+            --resource-group $AML_RESOURCE_GROUP

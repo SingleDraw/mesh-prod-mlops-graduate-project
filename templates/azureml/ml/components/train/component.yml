@@ -1,0 +1,58 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+name: component_train
+display_name: Train - ElasticNet Pipeline with Feature Engineering
+version: __TRAIN_VERSION__
+type: command
+inputs:
+  X_train:
+    type: uri_folder
+  y_train:
+    type: uri_folder
+  alpha:
+    type: number
+    default: 0.000248
+    description: ElasticNet regularisation strength
+  l1_ratio:
+    type: number
+    default: 0.18988
+    description: ElasticNet L1/L2 mix ratio (0 = Ridge, 1 = Lasso)
+  random_state:
+    type: integer
+    default: 42
+  # pipeline step-specific hyperparameters for feature engineering
+  n_components:
+    type: integer
+    default: 5
+  soft_clusters:
+    type: string
+    default: "false"
+  poly_degree:
+    type: integer
+    default: 2
+  corr_threshold:
+    type: number
+    default: 0.722225
+  k_best:
+    type: integer
+    default: 24
+outputs:
+  model_output:
+    type: uri_folder
+    description: Serialised sklearn pipeline (joblib)
+code: .
+command: >-
+  python train.py
+  --X_train ${{inputs.X_train}}
+  --y_train ${{inputs.y_train}}
+  --alpha ${{inputs.alpha}}
+  --l1_ratio ${{inputs.l1_ratio}}
+  --random_state ${{inputs.random_state}}
+  --n_components ${{inputs.n_components}}
+  --soft_clusters ${{inputs.soft_clusters}}
+  --poly_degree ${{inputs.poly_degree}}
+  --corr_threshold ${{inputs.corr_threshold}}
+  --k_best ${{inputs.k_best}}
+  --model_output ${{outputs.model_output}}
+environment: azureml:delta-env:__ENV_VERSION__
+resources:
+  instance_type: __INSTANCE_TYPE__

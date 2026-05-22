@@ -1,0 +1,48 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+name: component_prepare
+display_name: Prepare data for training
+version: __COMP_VERSION__
+type: command
+
+inputs:
+  input_data:
+    type: mltable
+    description: Delta table via MLTable
+  test_size:
+    type: number
+    default: 0.2
+    description: Fraction of data to use for test set
+  random_state:
+    type: integer
+    default: 42
+  target_column:
+    type: string
+    description: Name of the target/label column
+
+outputs:
+  X_train:
+    type: uri_folder
+  X_test:
+    type: uri_folder
+  y_train:
+    type: uri_folder
+  y_test:
+    type: uri_folder
+
+code: .
+
+command: >-
+  python prepare.py
+  --input_data ${{inputs.input_data}}
+  --target_column ${{inputs.target_column}}
+  --test_size ${{inputs.test_size}}
+  --random_state ${{inputs.random_state}}
+  --X_train ${{outputs.X_train}}
+  --X_test ${{outputs.X_test}}
+  --y_train ${{outputs.y_train}}
+  --y_test ${{outputs.y_test}}
+
+environment: azureml:delta-env:__ENV_VERSION__
+
+resources:
+  instance_type: __INSTANCE_TYPE__

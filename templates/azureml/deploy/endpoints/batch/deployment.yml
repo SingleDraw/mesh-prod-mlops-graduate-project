@@ -1,0 +1,3 @@
+# placeholder for deployment spec, not used in this example, 
+# but can be used in future for batch endpoint deployment spec. 
+# For online endpoints we are using endpoint.yml in endpoints/online/ folder.

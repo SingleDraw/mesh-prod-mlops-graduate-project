@@ -1,0 +1,23 @@
+artifact_path: file:///D:/DEV/AIML/ProjectRepos/AzureML/templates/azureml/mlflow/artifacts/models/m-09c3f9c934214568996ee8bb95f335f1/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.13.5
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: pickle
+    sklearn_version: 1.8.0
+    skops_trusted_types: null
+mlflow_version: 3.10.1
+model_id: m-09c3f9c934214568996ee8bb95f335f1
+model_size_bytes: 152547
+model_uuid: m-09c3f9c934214568996ee8bb95f335f1
+prompts: null
+run_id: d66e1808a6824a4a854bfe25721cb4a1
+utc_time_created: '2026-05-20 10:53:00.066362'

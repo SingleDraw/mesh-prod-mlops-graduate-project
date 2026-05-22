@@ -1,0 +1,26 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+name: component_evaluate
+display_name: Evaluate - Score Test Set
+version: __EVAL_VERSION__
+type: command
+inputs:
+  model_output:
+    type: uri_folder
+  X_test:
+    type: uri_folder
+  y_test:
+    type: uri_folder
+outputs:
+  eval_output:
+    type: uri_file
+    description: JSON file with evaluation metrics
+code: .
+command: >-
+  python evaluate.py
+  --model_output ${{inputs.model_output}}
+  --X_test ${{inputs.X_test}}
+  --y_test ${{inputs.y_test}}
+  --eval_output ${{outputs.eval_output}}
+environment: azureml:delta-env:__ENV_VERSION__
+resources:
+  instance_type: __INSTANCE_TYPE__

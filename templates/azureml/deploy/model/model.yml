@@ -1,0 +1,28 @@
+# Registered after a successful training run by the deploy workflow:
+#   az ml model create -f deploy/model/model.yml \
+#     --workspace-name $AML_WORKSPACE --resource-group $AML_RESOURCE_GROUP
+#
+# The "path" below uses the run ID injected by CI (see deploy.yml):
+#   azureml://jobs/<run_id>/outputs/trained_model
+# Once registered, deployment YAMLs reference it as  azureml:xgboost_reg:14
+
+$schema: https://azuremlschemas.azureedge.net/latest/model.schema.json
+
+name: {{MODEL_NAME}}
+version: {{MODEL_VERSION}}
+description: "XGBoost - {{FEATURE_STORE_DATASET_NAME}}:{{FEATURE_STORE_DATASET_VERSION}}, pipeline {{TRAINING_PIPELINE_NAME}}"
+type: mlflow_model
+
+# CI replaces __RUN_ID__ before calling az ml model create
+path: azureml://jobs/__RUN_ID__/outputs/trained_model
+
+properties:
+  framework: xgboost
+  framework_version: "2.0.3"
+#   training_dataset: transactions_raw:4
+  training_dataset: {{FEATURE_STORE_DATASET_NAME}}:{{FEATURE_STORE_DATASET_VERSION}}
+  pipeline_name: {{TRAINING_PIPELINE_NAME}}
+
+tags:
+  stage: {{STAGE}}
+  team: {{TEAM}}

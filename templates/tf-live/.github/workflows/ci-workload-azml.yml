@@ -1,0 +1,142 @@
+name: TF AzureML CI
+on:
+  workflow_dispatch:
+
+env:
+  # ===== TF variables for AzureML workload =====
+  TF_VAR_subscription_id: ${{ secrets.SUBSCRIPTION_ID }}
+  TF_VAR_location: ${{ vars.LOCATION }}
+  
+  # -- datalake not used yet but included for future expansion --
+  TF_VAR_datalake_resource_group_name: ${{ vars.RESOURCE_GROUP_NAME }}
+  TF_VAR_datalake_storage_account_name: ${{ vars.STORAGE_ACCOUNT_NAME  }}
+  TF_VAR_sa_uami_name: ${{ vars.SA_UAMI_NAME }}
+
+  # ===== AzureML-specific TF variables =====
+  TF_VAR_resource_group_name: ${{ vars.AZUREML_RESOURCE_GROUP_NAME }}
+  TF_VAR_storage_account_name: ${{ vars.AZUREML_STORAGE_ACCOUNT_NAME }}
+  TF_VAR_application_insights_name: ${{ vars.APPLICATION_INSIGHTS_NAME }}
+  TF_VAR_acr_name: ${{ vars.ACR_NAME }}
+  TF_VAR_key_vault_name: ${{ vars.KEY_VAULT_NAME }}
+  TF_VAR_workspace_name: ${{ vars.WORKSPACE_NAME }}
+  TF_VAR_endpoint_name: ${{ vars.ENDPOINT_NAME }}
+
+  # ===== GH Actions & Azure auth =====
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # built-in secret
+  ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+  ARM_USE_OIDC: true
+
+jobs:
+  plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./workloads/azure-ml
+
+    permissions:
+      contents: read
+      id-token: write # for OIDC auth
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+            terraform_version: 1.7.5
+
+      - name: Setup SSH key for private module access
+        uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_MODULES_PRIVATE_KEY }}
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+            client-id: ${{ secrets.ARM_CLIENT_ID }}
+            tenant-id: ${{ secrets.ARM_TENANT_ID }}
+            subscription-id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+
+      - name: Terraform Init
+        run: |
+            terraform init \
+            -upgrade -reconfigure \
+            -backend-config="resource_group_name=${{ vars.BACKEND_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ vars.BACKEND_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ vars.BACKEND_CONTAINER }}" \
+            -backend-config="key=${{ vars.AZUREML_STATE_KEY }}" \
+            -backend-config="use_azuread_auth=true"
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Apply (Plan Only)
+        run: |
+            terraform plan \
+            -input=false \
+            -no-color \
+            -out=tfplan
+
+      - name: Upload plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: workloads/azure-ml/tfplan
+
+  apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./workloads/azure-ml
+    needs: plan
+    if: github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: read
+      id-token: write # for OIDC auth
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+            terraform_version: 1.7.5
+
+      - name: Setup SSH key for private module access
+        uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_MODULES_PRIVATE_KEY }}
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.ARM_CLIENT_ID }}
+          tenant-id: ${{ secrets.ARM_TENANT_ID }}
+          subscription-id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+          -upgrade -reconfigure \
+          -backend-config="resource_group_name=${{ vars.BACKEND_RESOURCE_GROUP }}" \
+          -backend-config="storage_account_name=${{ vars.BACKEND_STORAGE_ACCOUNT }}" \
+          -backend-config="container_name=${{ vars.BACKEND_CONTAINER }}" \
+          -backend-config="key=${{ vars.AZUREML_STATE_KEY }}" \
+          -backend-config="use_azuread_auth=true"
+
+      - name: Download plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: workloads/azure-ml
+
+      - name: Terraform Apply
+        run: terraform apply -input=false -auto-approve tfplan

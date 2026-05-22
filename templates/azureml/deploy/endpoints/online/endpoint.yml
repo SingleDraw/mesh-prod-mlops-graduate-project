@@ -1,0 +1,11 @@
+$schema: https://azuremlschemas.azureedge.net/latest/managedOnlineEndpoint.schema.json
+
+# name must be unique within the AzureML workspace
+# its part of the endpoint's URL: https://<region>.azurewebsites.net/endpoints/<endpoint_name>/
+name: {{ENDPOINT_NAME}}
+description: "Online endpoint for churn classifier — blue/green deployments"
+auth_mode: key
+
+tags:
+  team: {{TEAM}}
+  environment: {{ENVIRONMENT}}

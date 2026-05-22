@@ -1,0 +1,15 @@
+# Uses Microsoft's AzureML OpenMPI image as the base
+FROM mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu22.04
+ARG ENV_FILE_PATH=delta-env.yml
+
+COPY ml/environments/conda/conda-${ENV_FILE_PATH} /tmp/conda.yml
+
+ENV AZUREML_SDK_TRACE=debug
+ENV AZUREML_ENVIRONMENT_IMAGE=True
+RUN set -eux && \
+    conda config --set channel_priority strict && \
+    conda env create -f /tmp/conda.yml -n ml && \
+    conda clean -afy
+ENV PATH=/opt/miniconda/envs/ml/bin:$PATH
+SHELL ["conda", "run", "-n", "ml", "/bin/bash", "-c"]
+RUN python -c "import sys; print(sys.version)"

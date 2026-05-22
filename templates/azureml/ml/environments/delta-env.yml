@@ -1,0 +1,24 @@
+$schema: https://azuremlschemas.azureedge.net/latest/environment.schema.json
+
+name: delta-env
+version: __ENV_VERSION__
+description: "Environment for azureML delta lake component"
+
+image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu22.04
+
+conda_file: conda/conda-delta-env.yml
+  # name: delta-env
+  # channels:
+  #   - conda-forge
+  # dependencies:
+  #   - python=3.10
+  #   - pip
+  #   - setuptools
+  #   - wheel
+  #   - pip:
+  #     # Pinning setuptools to avoid version conflicts with azureml-dataprep dependencies
+  #     - setuptools>=65.0.0
+  #     - mltable==1.6.1
+  #     - azureml-dataprep[pandas,delta]
+  #     - pandas==2.1.4
+  #     - pyarrow==14.0.1

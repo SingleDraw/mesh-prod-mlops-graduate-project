@@ -1,0 +1,102 @@
+FROM spark:3.5.1-scala2.12-java17-ubuntu
+
+ENV SPARK_HOME=/opt/spark \
+    JAVA_HOME=/opt/java/openjdk \
+    PYTHONPATH=/opt/spark/python:/opt/spark/python/lib/py4j-0.10.9.7-src.zip \
+    PYSPARK_PYTHON=/usr/bin/python3.11 \
+    PATH=/opt/spark/bin:$PATH:/home/spark/.local/bin \
+    SHELL=/bin/bash
+
+USER root
+
+# =========================
+# SYSTEM DEPENDENCIES
+# =========================
+RUN set -ex && \
+    # 1. System packages — no PPA needed, python3.11 is in Ubuntu 22.04 main
+    apt-get update && apt-get install -y --no-install-recommends \
+        git \
+        openssh-client \
+        wget \
+        curl \
+        bash \
+        procps \
+        python3.11 \
+        python3.11-venv \
+        python3.11-dev \
+        python3-pip && \
+    \
+    # 2. Symlinks
+    ln -sf /usr/bin/python3.11 /usr/bin/python3 && \
+    ln -sf /usr/bin/python3.11 /usr/bin/python && \
+    \
+    # 3. Upgrade pip for 3.11
+    python3.11 -m pip install --no-cache-dir --upgrade pip && \
+    \
+    # 4. Python packages
+    python3.11 -m pip install --no-cache-dir \
+        ipykernel jupyterlab findspark \
+        delta-spark==3.1.0 \
+        sqlalchemy pymysql \
+        azure-storage-blob \
+        python-dotenv \
+        boto3 pandas matplotlib requests && \
+    python3.11 -m ipykernel install --name python311 --display-name "Python 3.11"
+
+
+
+# =========================
+# SPARK LIBRARIES (OFFLINE MODE)
+# =========================
+RUN mkdir -p /opt/spark/jars && \
+    \
+    # ---- Delta Lake ----
+    wget -q -P /opt/spark/jars/ \
+        https://repo1.maven.org/maven2/io/delta/delta-spark_2.12/3.1.0/delta-spark_2.12-3.1.0.jar && \
+    wget -q -P /opt/spark/jars/ \
+        https://repo1.maven.org/maven2/io/delta/delta-storage/3.1.0/delta-storage-3.1.0.jar && \
+    \
+    # ---- Hadoop Azure (ABFS / ADLS Gen2) ----
+    wget -q -P /opt/spark/jars/ \
+        https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-azure/3.3.4/hadoop-azure-3.3.4.jar && \
+    wget -q -P /opt/spark/jars/ \
+        https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-common/3.3.4/hadoop-common-3.3.4.jar && \
+    wget -q -P /opt/spark/jars/ \
+        https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-auth/3.3.4/hadoop-auth-3.3.4.jar && \
+    wget -q -P /opt/spark/jars/ \
+        https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-client-runtime/3.3.4/hadoop-client-runtime-3.3.4.jar && \
+    \
+    # ---- Azure SDK ----
+    wget -q -P /opt/spark/jars/ \
+        https://repo1.maven.org/maven2/com/microsoft/azure/azure-storage/8.6.6/azure-storage-8.6.6.jar && \
+    wget -q -P /opt/spark/jars/ \
+        https://repo1.maven.org/maven2/com/microsoft/azure/azure-keyvault-core/1.0.0/azure-keyvault-core-1.0.0.jar && \
+    \
+    # ---- HTTP + Jackson stability ----
+    wget -q -P /opt/spark/jars/ \
+        https://repo1.maven.org/maven2/org/apache/httpcomponents/httpclient/4.5.13/httpclient-4.5.13.jar && \
+    wget -q -P /opt/spark/jars/ \
+        https://repo1.maven.org/maven2/org/apache/httpcomponents/httpcore/4.4.13/httpcore-4.4.13.jar && \
+    wget -q -P /opt/spark/jars/ \
+        https://repo1.maven.org/maven2/com/fasterxml/jackson/core/jackson-core/2.12.7/jackson-core-2.12.7.jar
+
+
+# =========================
+# RUNTIME DIRECTORIES
+# =========================
+RUN mkdir -p /data /opt/spark/conf /tmp/spark-local-dir \
+             /home/spark/.local/share/jupyter/runtime && \
+    chown -R spark:spark /data /opt/spark /home/spark /tmp/spark-local-dir
+
+# =========================
+# SSH (git access)
+# =========================
+RUN mkdir -p /home/spark/.ssh && \
+    ssh-keyscan github.com > /home/spark/.ssh/known_hosts && \
+    chown -R spark:spark /home/spark/.ssh && \
+    chmod 700 /home/spark/.ssh && \
+    chmod 600 /home/spark/.ssh/known_hosts
+
+USER spark
+WORKDIR /home/spark
+EXPOSE 8888

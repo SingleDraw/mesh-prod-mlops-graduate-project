@@ -1,0 +1,18 @@
+.env
+.env.*
+.env.azure
+!.env.example
+secrets/*
+!secrets/.gitkeep
+
+.docs
+_bak
+_docs
+.screenshots
+.troubleshoot
+.ml-old
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+*.pyo

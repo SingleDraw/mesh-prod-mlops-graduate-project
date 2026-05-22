@@ -1,0 +1,14 @@
+# Resource versions (to bump up manually)
+versions:
+  delta_env: "1.2.7"
+  component_prepare: "1.2.7"
+  component_train: "1.2.7"
+  component_eval: "1.2.7"
+  feature_store_gold_dataset: "1.2.7"
+  delta_pipeline: "1.2.7"
+
+delta:
+  snapshot_time: "2024-11-01T00:00:00Z"
+
+compute:
+  instance_type: "standard_ds2_v2"

@@ -1,0 +1,59 @@
+name: AzureML CI Register DataLake
+
+on:
+  workflow_dispatch:
+
+env:
+  # ===== Azure and AzureML connection settings =====
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+  CLIENT_SECRET: ${{ secrets.SP_CLIENT_SECRET }}
+
+  # ====== AzureML workload variables ======
+  AML_RESOURCE_GROUP:   ${{ vars.AML_RESOURCE_GROUP }}
+  AML_WORKSPACE_NAME:   ${{ vars.AML_WORKSPACE_NAME }}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  register-datalake:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ========= Setup and Azure Login (OIDC) ==========
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.ARM_CLIENT_ID }}
+          tenant-id: ${{ secrets.ARM_TENANT_ID }}
+          subscription-id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+
+      - name: Mask SP secret
+        run: echo "::add-mask::$CLIENT_SECRET"
+
+      - name: Install Azure ML CLI extension
+        run: az extension add --name ml -y
+
+      # uses identity that has access to the storage
+      - name: Register test datastore
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TMP_FILE=$(mktemp)
+
+          # Inject secret into definition file.
+          sed "s|__CLIENT_SECRET__|$CLIENT_SECRET|g" \
+          ml/datastores/datastore-shared.yml > "$TMP_FILE"
+
+          # Indempotent registration
+          az ml datastore create \
+            --file "$TMP_FILE" \
+            --workspace-name $AML_WORKSPACE_NAME \
+            --resource-group $AML_RESOURCE_GROUP
+
+          rm -f "$TMP_FILE"

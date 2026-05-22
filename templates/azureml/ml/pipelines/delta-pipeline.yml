@@ -1,0 +1,87 @@
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+type: pipeline
+display_name: Delta ML Pipeline - Prepare / Train / Evaluate
+description: >
+  Reads a Delta Lake table via MLTable, drops metadata columns, splits 80/20,
+  trains ml pipeline, and evaluates on the held-out set.
+
+settings:
+  default_compute: azureml:serverless
+
+
+# =================== Inputs =====================
+inputs:
+  pipeline_input:
+    type: mltable
+    path: azureml:feature_store_gold_dataset:__DATA_VERSION__
+
+  target_column: "process_time"
+  test_size: 0.2
+  random_state: 42
+  alpha: 0.1
+  l1_ratio: 0.5
+
+
+# ================== Jobs =====================
+# NOTE: job_names are used as references in downstream job inputs!
+jobs:
+
+  # --- PREPARE DATA ---
+  prepare_job:
+
+    type: command
+
+    # component ref
+    component: azureml:component_prepare:__COMP_VERSION__
+
+    # optional: override component-level instance type from component
+    resources:
+      instance_type: __INSTANCE_TYPE__
+    
+    inputs:
+      input_data: ${{parent.inputs.pipeline_input}}
+      target_column: ${{parent.inputs.target_column}}
+      test_size: ${{parent.inputs.test_size}}
+      random_state: ${{parent.inputs.random_state}}
+
+    outputs:
+      X_train:
+        type: uri_folder
+      X_test:
+        type: uri_folder
+      y_train:
+        type: uri_folder
+      y_test:
+        type: uri_folder
+
+
+  # --- TRAIN MODEL ---
+  train_job:
+    type: command
+    component: azureml:component_train:__COMP_VERSION__
+    resources:
+      instance_type: __INSTANCE_TYPE__
+    inputs:
+      X_train:      ${{parent.jobs.prepare_job.outputs.X_train}}
+      y_train:      ${{parent.jobs.prepare_job.outputs.y_train}}
+      alpha:        ${{parent.inputs.alpha}}
+      l1_ratio:     ${{parent.inputs.l1_ratio}}
+      random_state: ${{parent.inputs.random_state}}
+    outputs:
+      model_output:
+        type: uri_folder
+
+  # --- EVALUATE MODEL ---
+  evaluate_job:
+    type: command
+    component: azureml:component_evaluate:__COMP_VERSION__
+    resources:
+      instance_type: __INSTANCE_TYPE__
+    inputs:
+      model_output: ${{parent.jobs.train_job.outputs.model_output}}
+      X_test:       ${{parent.jobs.prepare_job.outputs.X_test}}
+      y_test:       ${{parent.jobs.prepare_job.outputs.y_test}}
+    outputs:
+      eval_output:
+        type: uri_file
+ 

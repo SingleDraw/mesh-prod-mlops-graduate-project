@@ -1,0 +1,10 @@
+$schema: https://azuremlschemas.azureedge.net/latest/MLTable.schema.json
+type: mltable
+
+paths:
+  - folder: ./{{DELTA_TABLE_RELATIVE}}
+
+transformations:
+  - read_delta_lake:
+      # time travel snapshot
+      timestamp_as_of: "__SNAPSHOT_TIME__"

@@ -1,0 +1,21 @@
+$schema: https://azuremlschemas.azureedge.net/latest/environment.schema.json
+
+name: test-env
+version: __ENV_VERSION__
+description: "Test environment for ml component unit tests"
+
+image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu22.04
+
+conda_file:
+  name: test-env
+  channels:
+    - conda-forge
+    - defaults
+  dependencies:
+    - python=3.10
+    - pip
+    - pip:
+      - numpy==1.23.5
+      - joblib==1.1.1
+      - pandas==2.1.4
+      - pyarrow==14.0.1

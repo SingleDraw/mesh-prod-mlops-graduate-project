@@ -1,0 +1,77 @@
+name: TF Databricks Destroy
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type 'destroy' to confirm"
+        required: true
+
+env:
+  TF_VAR_subscription_id: ${{ secrets.SUBSCRIPTION_ID }}
+  TF_VAR_tfstate_resource_group_name: ${{ vars.BACKEND_RESOURCE_GROUP }}
+  TF_VAR_tfstate_storage_account_name: ${{ vars.BACKEND_STORAGE_ACCOUNT }}
+
+  TF_VAR_resource_group_name: ${{ vars.RESOURCE_GROUP_NAME }}
+  TF_VAR_location: ${{ vars.LOCATION }}
+  TF_VAR_storage_account_name: ${{ vars.STORAGE_ACCOUNT_NAME }}
+  TF_VAR_sa_uami_name: ${{ vars.SA_UAMI_NAME }}
+  TF_VAR_prefix: ${{ vars.PREFIX }}
+
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # built-in secret
+  ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+  ARM_USE_OIDC: true
+
+jobs:
+  terraform-destroy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Guard (prevent accidental destroy)
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "destroy" ]; then
+            echo "Confirmation failed"
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+            terraform_version: 1.7.5
+            
+      - name: Setup SSH key for private module access
+        uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_MODULES_PRIVATE_KEY }}
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.ARM_CLIENT_ID }}
+          tenant-id: ${{ secrets.ARM_TENANT_ID }}
+          subscription-id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+
+      - name: Terraform Init
+        working-directory: ./workloads/databricks
+        run: |
+          terraform init \
+          -upgrade -reconfigure \
+          -backend-config="resource_group_name=${{ vars.BACKEND_RESOURCE_GROUP }}" \
+          -backend-config="storage_account_name=${{ vars.BACKEND_STORAGE_ACCOUNT }}" \
+          -backend-config="container_name=${{ vars.BACKEND_CONTAINER }}" \
+          -backend-config="key=${{ vars.DATABRICKS_STATE_KEY }}" \
+          -backend-config="use_azuread_auth=true"
+
+      - name: Terraform Destroy
+        working-directory: ./workloads/databricks
+        run: terraform destroy -auto-approve

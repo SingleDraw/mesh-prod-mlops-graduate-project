@@ -1,0 +1,36 @@
+$schema: https://azuremlschemas.azureedge.net/latest/managedOnlineDeployment.schema.json
+
+name: blue
+endpoint_name: {{ENDPOINT_NAME}}
+
+# References the model registered by deploy/model/model.yml — name:version
+model: azureml:{{MODEL_NAME}}:{{MODEL_VERSION}}
+
+# inference-env must be registered before this runs (step 2 in CI)
+environment: azureml:inference-env:{{INFERENCE_ENV_VERSION}}
+
+code_configuration:
+  code: ../../../ml/components/train   # folder that contains score.py
+  scoring_script: score.py
+
+instance_type: {{INSTANCE_TYPE}}
+instance_count: 1                     # lower while canary — scale up after promotion
+
+liveness_probe:
+  initial_delay: 10
+  period: 10
+  timeout: 2
+  failure_threshold: 30
+
+readiness_probe:
+  initial_delay: 10
+  period: 10
+  timeout: 2
+  failure_threshold: 10
+
+request_settings:
+  max_concurrent_requests_per_instance: 5
+  request_timeout_ms: 5000
+
+scale_settings:
+  type: default                        # swap for target_utilization for autoscale

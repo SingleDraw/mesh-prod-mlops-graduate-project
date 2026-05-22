@@ -1,0 +1,82 @@
+resources:
+  jobs:
+    medallion_job:
+      name: "medallion-job-${var.env}"
+      job_clusters:
+        - job_cluster_key: main_cluster
+          new_cluster:
+            spark_version: "15.4.x-scala2.12"
+            node_type_id: "${var.cluster_node_type}"
+            num_workers: 0
+            custom_tags:
+                ResourceClass: SingleNode
+            spark_conf:
+                spark.databricks.cluster.profile: singleNode
+                spark.master: "local[*]"
+                fs.azure.account.auth.type.{{STORAGE_ACCOUNT_NAME}}.dfs.core.windows.net: OAuth
+                fs.azure.account.oauth.provider.type.{{STORAGE_ACCOUNT_NAME}}.dfs.core.windows.net: org.apache.hadoop.fs.azurebfs.oauth2.ClientCredsTokenProvider
+                fs.azure.account.oauth2.client.id.{{STORAGE_ACCOUNT_NAME}}.dfs.core.windows.net: ${var.sp_client_id}
+                fs.azure.account.oauth2.client.secret.{{STORAGE_ACCOUNT_NAME}}.dfs.core.windows.net: ${var.sp_client_secret}
+                fs.azure.account.oauth2.client.endpoint.{{STORAGE_ACCOUNT_NAME}}.dfs.core.windows.net: https://login.microsoftonline.com/${var.tenant_id}/oauth2/token
+            # spark_env_vars:
+            #     PYTHONPATH: "${bundle.root}/files"
+      tasks:
+        # =====================================
+        #   Bronze task: Ingest Excel file from ADLS Gen2
+        # =====================================
+        - task_key: bronze
+          job_cluster_key: main_cluster
+          libraries:
+            - pypi:
+                package: openpyxl
+            - maven:
+                coordinates: com.crealytics:spark-excel_2.12:0.13.7
+          spark_python_task:
+            python_file: ../../src/bronze/ingest.py
+            parameters:
+              - "--storage_account"
+              - "${var.storage_account}"
+              - "--container"
+              - "raw"
+              - "--source_blob"
+              - "production_time.xlsx"
+              - "--sink_blob"
+              - "delta/bronze/production_time"
+
+        # =====================================
+        #   Silver task: Transform bronze data and write to silver layer
+        # =====================================
+        - task_key: silver
+          depends_on:
+            - task_key: bronze
+          job_cluster_key: main_cluster
+          spark_python_task:
+            python_file: ../../src/silver/transform.py
+            parameters:
+              - "--storage_account"
+              - "${var.storage_account}"
+              - "--container"
+              - "raw"
+              - "--source_blob"
+              - "delta/bronze/production_time"
+              - "--sink_blob"
+              - "delta/silver/production_time"
+
+        # =====================================
+        #   Gold task: Serve as offline feature store for downstream consumption
+        # =====================================
+        - task_key: gold
+          depends_on:
+            - task_key: silver
+          job_cluster_key: main_cluster
+          spark_python_task:
+            python_file: ../../src/gold/feature.py
+            parameters:
+              - "--storage_account"
+              - "${var.storage_account}"
+              - "--container"
+              - "raw"
+              - "--source_blob"
+              - "delta/silver/production_time"
+              - "--sink_blob"
+              - "delta/gold/production_time"
