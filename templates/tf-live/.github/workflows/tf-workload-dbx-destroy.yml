@@ -8,16 +8,14 @@ on:
         required: true
 
 env:
+  # ===== TF variables for Databricks workload =====
   TF_VAR_subscription_id: ${{ secrets.SUBSCRIPTION_ID }}
-  TF_VAR_tfstate_resource_group_name: ${{ vars.BACKEND_RESOURCE_GROUP }}
-  TF_VAR_tfstate_storage_account_name: ${{ vars.BACKEND_STORAGE_ACCOUNT }}
-
-  TF_VAR_resource_group_name: ${{ vars.RESOURCE_GROUP_NAME }}
-  TF_VAR_location: ${{ vars.LOCATION }}
-  TF_VAR_storage_account_name: ${{ vars.STORAGE_ACCOUNT_NAME }}
-  TF_VAR_sa_uami_name: ${{ vars.SA_UAMI_NAME }}
   TF_VAR_prefix: ${{ vars.PREFIX }}
+  TF_VAR_location: ${{ vars.LOCATION }}
+  TF_VAR_datalake_resource_group_name: ${{ vars.RESOURCE_GROUP_NAME }}
+  TF_VAR_datalake_storage_account_name: ${{ vars.STORAGE_ACCOUNT_NAME  }}
 
+  # ===== GH Actions & Azure auth =====
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # built-in secret
   ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
@@ -65,12 +63,12 @@ jobs:
         working-directory: ./workloads/databricks
         run: |
           terraform init \
-          -upgrade -reconfigure \
-          -backend-config="resource_group_name=${{ vars.BACKEND_RESOURCE_GROUP }}" \
-          -backend-config="storage_account_name=${{ vars.BACKEND_STORAGE_ACCOUNT }}" \
-          -backend-config="container_name=${{ vars.BACKEND_CONTAINER }}" \
-          -backend-config="key=${{ vars.DATABRICKS_STATE_KEY }}" \
-          -backend-config="use_azuread_auth=true"
+            -upgrade -reconfigure \
+            -backend-config="resource_group_name=${{ vars.BACKEND_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ vars.BACKEND_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ vars.BACKEND_CONTAINER }}" \
+            -backend-config="key=${{ vars.DATABRICKS_STATE_KEY }}" \
+            -backend-config="use_azuread_auth=true"
 
       - name: Terraform Destroy
         working-directory: ./workloads/databricks

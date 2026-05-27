@@ -92,10 +92,6 @@ get-logs-runid:
 		| python3 -c "import sys,json; r=json.load(sys.stdin); print(r.get('error','no error')); print(r.get('error_trace','no trace'))"
 
 
-tf-db-destroy:
-	$(call tf_databricks,destroy)
-
-
 
 # =========================================================
 # DELETE AZUREML WORKSPACE

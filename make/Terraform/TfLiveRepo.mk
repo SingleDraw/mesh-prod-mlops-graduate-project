@@ -81,7 +81,10 @@ generate-live-repo:
 
 
 # =========================================================
-# Remote Workflows (uses OIDC service principal authentication)
+# Infrastructure Targets
+# These targets can be used to deploy or destroy 
+# shared platform and workloads for Databricks and AzureML.
+# =========================================================
 
 # --- CI Workflows ---
 trigger-live-platform-ci:
@@ -143,33 +146,56 @@ tf-platform-destroy:
 
 
 # --- AzureML Targets ---
-# environment variables
-define tf_azureml
-	$(call unix-endings) && \
-	export TF_VAR_subscription_id=$(SUBSCRIPTION_ID) && \
-	export TF_VAR_resource_group_name=$(RESOURCE_GROUP_NAME) && \
-	export TF_VAR_location=$(LOCATION) && \
-	export TF_VAR_acr_name=$(ACR_NAME) && \
-	export TF_VAR_storage_account_name=$(STORAGE_ACCOUNT_NAME) && \
-	export TF_VAR_key_vault_name=$(KEY_VAULT_NAME) && \
-	export TF_VAR_workspace_name=$(WORKSPACE_NAME) && \
-	export TF_VAR_endpoint_name=$(ENDPOINT_NAME) && \
-	export TF_VAR_application_insights_name=$(APPLICATION_INSIGHTS_NAME)
-endef
-tf-ml-init:
-	$(call tf_azureml) && \
-	terraform -chdir=$(AZUREML_INFRA) init --reconfigure \
-	--upgrade $(backend-config-azureml)
-tf-ml-apply:
-	$(call tf_azureml) && \
-	terraform -chdir=$(AZUREML_INFRA) init --reconfigure \
-	--upgrade $(backend-config-azureml) && \
-	terraform -chdir=$(AZUREML_INFRA) apply -auto-approve
-tf-ml-destroy:
-	$(call tf_azureml) && \
-	terraform -chdir=$(AZUREML_INFRA) init --reconfigure \
-	--upgrade $(backend-config-azureml) && \
-	terraform -chdir=$(AZUREML_INFRA) destroy -auto-approve
+# # environment variables
+# define tf_azureml
+# 	$(call unix-endings) && \
+# 	export TF_VAR_subscription_id=$(SUBSCRIPTION_ID) && \
+# 	export TF_VAR_resource_group_name=$(RESOURCE_GROUP_NAME) && \
+# 	export TF_VAR_location=$(LOCATION) && \
+# 	export TF_VAR_acr_name=$(ACR_NAME) && \
+# 	export TF_VAR_storage_account_name=$(STORAGE_ACCOUNT_NAME) && \
+# 	export TF_VAR_key_vault_name=$(KEY_VAULT_NAME) && \
+# 	export TF_VAR_workspace_name=$(WORKSPACE_NAME) && \
+# 	export TF_VAR_endpoint_name=$(ENDPOINT_NAME) && \
+# 	export TF_VAR_application_insights_name=$(APPLICATION_INSIGHTS_NAME)
+# endef
+# tf-ml-init:
+# 	$(call tf_azureml) && \
+# 	terraform -chdir=$(AZUREML_INFRA) init --reconfigure \
+# 	--upgrade $(backend-config-azureml)
+# tf-ml-apply:
+# 	$(call tf_azureml) && \
+# 	terraform -chdir=$(AZUREML_INFRA) init --reconfigure \
+# 	--upgrade $(backend-config-azureml) && \
+# 	terraform -chdir=$(AZUREML_INFRA) apply -auto-approve
+# tf-ml-destroy:
+# 	$(call tf_azureml) && \
+# 	terraform -chdir=$(AZUREML_INFRA) init --reconfigure \
+# 	--upgrade $(backend-config-azureml) && \
+# 	terraform -chdir=$(AZUREML_INFRA) destroy -auto-approve
+
+
+# --- Databricks Targets ---
+
+# # environment variables
+# define tf_databricks
+# 	$(call unix-endings) && \
+# 	export TF_VAR_subscription_id=$(SUBSCRIPTION_ID) && \
+# 	export TF_VAR_prefix=$(DATASTACK_PREFIX) && \
+# 	export TF_VAR_location=$(LOCATION) && \
+# 	export TF_VAR_datalake_resource_group_name=$(PLATFORM_RESOURCE_GROUP_NAME) && \
+# 	export TF_VAR_datalake_storage_account_name=$(DATALAKE_NAME)
+# endef
+# tf-dbx-init:
+# 	$(call tf_databricks) && \
+# 	terraform -chdir=$(DATABRICKS_INFRA) init --reconfigure \
+# 	--upgrade $(backend-config-databricks)
+# tf-dbx-apply:
+# 	$(call tf_databricks) && \
+# 	terraform -chdir=$(DATABRICKS_INFRA) apply -auto-approve
+# tf-dbx-destroy:
+# 	$(call tf_databricks) && \
+# 	terraform -chdir=$(DATABRICKS_INFRA) destroy -auto-approve
 
 
 # --------------------------
