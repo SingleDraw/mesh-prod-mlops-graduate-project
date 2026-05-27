@@ -197,10 +197,12 @@ tf-platform-destroy:
 # 	$(call tf_databricks) && \
 # 	terraform -chdir=$(DATABRICKS_INFRA) destroy -auto-approve
 
-DATABRICKS_LOCK_ID := f3836ec4-d868-4569-4c65-2a6837f6ec89
 tf-dbx-unlock-state:
-	$(call tf_databricks) && \
-	terraform -chdir=$(DATABRICKS_INFRA) force-unlock -force $(DATABRICKS_LOCK_ID)
+	gh workflow run "TF Databricks State Unlock" \
+		-f confirm=unlock \
+		-f lock_id=$(DATABRICKS_LOCK_ID) \
+		--repo $(LIVE_REPO) \
+		--ref main
 
 # --------------------------
 # Debugging

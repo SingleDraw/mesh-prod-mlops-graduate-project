@@ -57,10 +57,5 @@ include make/Local/JupyterLab.mk
 # make trigger-destroy-platform-ci
 
 # ==========================
-# Debugging
-# Remove state lock (if tf state gets locked due to failed runs or other issues)
-# ...
-
-# python notebooks/delta_min.py 		<-- works great and reads delta 
-# python notebooks/read_mltable.py 		<-- fails because mltable tries to authenticate with its identity and fails. MLTABLE CANNOT BE USED LOCALLY, PERIOD.
-
+# Debugging (tf state unlock)
+# make tf-dbx-unlock-state DATABRICKS_LOCK_ID=<lock_id>
